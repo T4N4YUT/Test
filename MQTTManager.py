@@ -9,9 +9,11 @@ import os
 from ConfigManager import Config_Manager
 
 class MQTT_Manager:
-    def __init__(self, mac):
+    def __init__(self, mac, ethernet, dht22_manager):
         self.config_manager = Config_Manager("mqtt_config.json", default_config_file="mqtt_default_config.json")
         self.mac = mac
+        self.ethernet = ethernet
+        self.dht22_manager = dht22_manager
         self.is_mqtt_ready = False
         client_id = self.mac.replace(':', '') if self.mac else ubinascii.hexlify(machine.unique_id()).decode()
         lwt_topic = self.config_manager.get_config('lwt_topic', f'esp32/{client_id}/status')
@@ -59,6 +61,27 @@ class MQTT_Manager:
                 t = topic.decode('utf-8')
                 p = msg.decode('utf-8')
                 print(f"Debug: MQTT Message Received on '{t}': {p} ✔")
+                if t == 'esp32/commands' and p.strip() == '{"command":"get_config"}':
+                    print("Debug: Received get_config command. Gathering configuration...")
+                    ethernet_config = self.ethernet.config.load_config()
+                    mqtt_config = self.config_manager.load_config()
+                    dht22_config = self.dht22_manager.config_manager.load_config()
+                    response_payload = {
+                        "ethernet": ethernet_config,
+                        "mqtt": mqtt_config,
+                        "alerts": {
+                            "temp_crit_low": dht22_config.get("CON_TEMP_MIN"),
+                            "temp_warn_low": dht22_config.get("CON_TEMP_MIN"),
+                            "temp_warn_high": dht22_config.get("CON_TEMP_MAX"),
+                            "temp_crit_high": dht22_config.get("CON_TEMP_MAX"),
+                            "hum_crit_low": dht22_config.get("CON_HUM_MIN"),
+                            "hum_warn_low": dht22_config.get("CON_HUM_MIN"),
+                            "hum_warn_high": dht22_config.get("CON_HUM_MAX"),
+                            "hum_crit_high": dht22_config.get("CON_HUM_MAX")
+                        }
+                    }
+                    response_topic = f"esp32/response/{self.mac}/config"
+                    await self.safe_publish(response_topic, response_payload)
             except Exception as e:
                 print(f"Error: Processing message: {e} ✘")
 
@@ -101,3 +124,4 @@ class MQTT_Manager:
             print("✅ MQTT config has been reset to default values.")
         except Exception as e:
             print(f"⚠️ Failed to reset MQTT config: {e}")
+
