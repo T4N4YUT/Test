@@ -245,22 +245,6 @@
         ]
     },
     {
-        "id": "aa62b8b4ab44d73e",
-        "type": "debug",
-        "z": "c0cdca176eedd227",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 860,
-        "y": 1820,
-        "wires": []
-    },
-    {
         "id": "0b3358f711e7ed0b",
         "type": "uibuilder",
         "z": "c0cdca176eedd227",
@@ -284,11 +268,9 @@
         "y": 1920,
         "wires": [
             [
-                "aa62b8b4ab44d73e"
-            ],
-            [
                 "e5d4b2fc7b68de6a"
-            ]
+            ],
+            []
         ]
     },
     {
@@ -332,6 +314,11 @@
         "topic": "esp32/commands",
         "qos": "1",
         "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
         "broker": "8301192ec347dbc9",
         "x": 1080,
         "y": 1900,
@@ -345,6 +332,11 @@
         "topic": "esp32/set_config",
         "qos": "1",
         "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
         "broker": "8301192ec347dbc9",
         "x": 1090,
         "y": 1960,
