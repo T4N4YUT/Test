@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .sensor-card h2,
+        .sensor-card .unit-text,
+        .sensor-card .value-text,
+        .sensor-card p {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        .main-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .sensor-card {
+            border-radius: 1rem;
+            transition: all 0.4s ease;
+            color: white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            min-height: 240px;
+        }
+        .sensor-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 25px rgba(0,0,0,0.15);
+        }
+        @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .value-animate { animation: fade-in-up 0.5s ease-out; }
+        .icon-container { transition: opacity 0.5s ease-in-out; }
+        
+        /* Popup Styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .popup-content {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            width: 90%;
+            max-width: 700px; /* Increased width */
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.9) translateY(50px);
+            transition: all 0.3s ease;
+        }
+        .popup-overlay.active .popup-content {
+            transform: scale(1) translateY(0);
+        }
+        .popup-body {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        .form-control:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .btn {
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #475569;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+        .info-box {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #1e40af;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid #bfdbfe;
+        }
+        /* Tab Styles */
+        .tab-button {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .tab-button.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        /* List Item Styles */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f1f5f9;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            color: #334155;
+        }
+        .remove-item-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            transition: color 0.2s, transform 0.2s;
+            font-size: 1rem;
+            padding: 4px;
+        }
+        .remove-item-btn:hover {
+            color: #b91c1c;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="bg-white border border-slate-200/80 rounded-2xl shadow-xl p-6 md:p-8 w-full max-w-4xl">
+            
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex-grow">
+                    <h1 id="dashboard-title" class="text-3xl md:text-4xl font-extrabold text-slate-800 text-center cursor-pointer" title="Double-click to edit">
+                        Server Room Environment Monitoring
+                    </h1>
+                </div>
+                <button
+                    class="open-config-btn text-slate-500 hover:text-blue-500 text-2xl transition-all hover:rotate-12 ml-4 flex-shrink-0"
+                    data-room="RoomA"
+                >
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-600 px-4 text-sm mb-6">
+                <div class="flex items-center justify-center md:justify-start">
+                    <div id="status-indicator" class="w-3 h-3 rounded-full bg-slate-400 mr-2 transition-colors duration-500"></div>
+                    <span id="status-text" class="text-slate-600 font-extrabold text-xl">Offline</span>
+                    <span id="ping-time" class="ml-1 text-slate-600 font-semibold hidden text-xl"></span>
+                </div>
+                <div class="flex items-center justify-center md:justify-end">
+                    <span id="last-updated" class="text-slate-600 font-extrabold text-xl"></span>
+                </div>
+            </div>
+
+            <hr class="my-6 border-slate-200">
+
+            <div class="flex flex-col md:flex-row justify-around items-center text-center gap-6">
+                <div id="temperature-section" class="sensor-card flex flex-col items-center w-full p-6 min-h-60">
+                    <div id="temperature-icon-container" class="flex items-center justify-center w-20 h-20 mb-4 rounded-full bg-white/20 opacity-0 icon-container">
+                        <img src="temperature.png" alt="Temperature Icon" class="w-12 h-12">
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Temperature</h2>
+                    <div class="flex items-baseline text-6xl font-bold">
+                        <span id="temperature-value" class="value-text" style="opacity: 0;">-</span>
+                        <span class="ml-2 text-6xl font-bold unit-text" style="opacity: 0;">°C</span>
+                    </div>
+                    <p id="temperature-status" class="mt-3 text-xl font-bold text-white drop-shadow opacity-80 h-7" style="opacity: 0;"></p>
+                </div>
+
+                <div id="humidity-section" class="sensor-card flex flex-col items-center w-full p-6 min-h-60">
+                    <div id="humidity-icon-container" class="flex items-center justify-center w-20 h-20 mb-4 rounded-full bg-white/20 opacity-0 icon-container">
+                        <img src="humidity.png" alt="Humidity Icon" class="w-12 h-12">
+                    </div>
+                    <h2 class="text-2xl font-bold mb-2">Humidity</h2>
+                    <div class="flex items-baseline text-6xl font-bold">
+                        <span id="humidity-value" class="value-text" style="opacity: 0;">-</span>
+                        <span class="ml-2 text-6xl font-bold unit-text" style="opacity: 0;">%</span>
+                    </div>
+                    <p id="humidity-status" class="mt-3 text-xl font-bold text-white drop-shadow opacity-80 h-7" style="opacity: 0;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Popup -->
+    <div id="config-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="p-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl flex justify-between items-center flex-shrink-0">
+                <div class="flex flex-wrap">
+                    <button id="tab-btn-ethernet" class="tab-button active" onclick="switchTab('ethernet')">
+                        <i class="fas fa-ethernet mr-2"></i>Ethernet
+                    </button>
+                     <button id="tab-btn-mqtt" class="tab-button" onclick="switchTab('mqtt')">
+                        <i class="fas fa-broadcast-tower mr-2"></i>MQTT
+                    </button>
+                    <button id="tab-btn-alerts" class="tab-button" onclick="switchTab('alerts')">
+                        <i class="fas fa-bell mr-2"></i>Alerts
+                    </button>
+                    <button id="tab-btn-notifications" class="tab-button" onclick="switchTab('notifications')">
+                        <i class="fas fa-paper-plane mr-2"></i>Recipients
+                    </button>
+                    <button id="tab-btn-report" class="tab-button" onclick="switchTab('report')">
+                        <i class="fas fa-file-alt mr-2"></i>Report
+                    </button>
+                </div>
+                <button onclick="closeConfigPopup()" class="text-gray-500 hover:text-gray-700 text-2xl pr-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="popup-body">
+                <!-- Ethernet Tab -->
+                <div id="tab-content-ethernet" class="tab-content active">
+                    <div class="p-6">
+                        <div class="info-box font-mono">
+                            <div class="flex items-center justify-start gap-2 text-lg">
+                                <i class="fas fa-network-wired text-blue-600"></i>
+                                <strong>MAC:
+                                <span id="mac-address"> </span>
+                                </strong>
+                            </div>
+                        </div>
+                        <form id="ethernet-form" onsubmit="event.preventDefault();">
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="ip" class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-globe mr-2"></i>IP Address:</label>
+                                    <input type="text" id="ip" name="ip" class="form-control" placeholder="192.168.1.100">
+                                </div>
+                                <div>
+                                    <label for="subnet" class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-network-wired mr-2"></i>Subnet Mask:</label>
+                                    <input type="text" id="subnet" name="subnet" class="form-control" placeholder="255.255.255.0">
+                                </div>
+                                <div>
+                                    <label for="gateway" class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-route mr-2"></i>Gateway:</label>
+                                    <input type="text" id="gateway" name="gateway" class="form-control" placeholder="192.168.1.1">
+                                </div>
+                                <div>
+                                    <label for="dns" class="block text-sm font-semibold text-gray-700 mb-2"><i class="fas fa-server mr-2"></i>DNS Server:</label>
+                                    <input type="text" id="dns" name="dns" class="form-control" placeholder="8.8.8.8">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- MQTT Tab -->
+                <div id="tab-content-mqtt" class="tab-content">
+                    <div class="p-6">
+                        <form id="mqtt-form" onsubmit="event.preventDefault();" class="space-y-4">
+                            <div>
+                                <label for="mqtt-broker" class="block text-sm font-semibold text-gray-700 mb-1">Broker URL:</label>
+                                <input type="text" id="mqtt-broker" class="form-control" placeholder="mqtt://your-broker.com">
+                            </div>
+                            <div>
+                                <label for="mqtt-port" class="block text-sm font-semibold text-gray-700 mb-1">Port:</label>
+                                <input type="number" id="mqtt-port" class="form-control" placeholder="1883">
+                            </div>
+                            <div>
+                                <label for="mqtt-user" class="block text-sm font-semibold text-gray-700 mb-1">Username (Optional):</label>
+                                <input type="text" id="mqtt-user" class="form-control">
+                            </div>
+                            <div class="relative">
+                                <label for="mqtt-pass" class="block text-sm font-semibold text-gray-700 mb-1">Password (Optional):</label>
+                                <input type="password" id="mqtt-pass" class="form-control" autocomplete="new-password">
+                                <button type="button" class="absolute right-3 top-9 text-slate-400 hover:text-slate-600" onclick="togglePasswordVisibility('mqtt-pass', this)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Alerts Tab -->
+                <div id="tab-content-alerts" class="tab-content">
+                    <div class="p-6">
+                        <form id="alert-form" onsubmit="event.preventDefault();">
+                            <div class="space-y-6">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800 mb-3 border-b pb-2"><i class="fas fa-thermometer-half mr-2 text-red-500"></i>Temperature Alerts (°C)</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="temp-crit-low" class="block text-sm font-semibold text-gray-700 mb-1">Critical Low (ต่ำสุด)</label>
+                                            <input type="number" step="0.1" id="temp-crit-low" class="form-control" placeholder="e.g., 18">
+                                        </div>
+                                        <div>
+                                            <label for="temp-warn-low" class="block text-sm font-semibold text-gray-700 mb-1">Warning Low (เตือนต่ำ)</label>
+                                            <input type="number" step="0.1" id="temp-warn-low" class="form-control" placeholder="e.g., 20">
+                                        </div>
+                                        <div>
+                                            <label for="temp-warn-high" class="block text-sm font-semibold text-gray-700 mb-1">Warning High (เตือนสูง)</label>
+                                            <input type="number" step="0.1" id="temp-warn-high" class="form-control" placeholder="e.g., 28">
+                                        </div>
+                                        <div>
+                                            <label for="temp-crit-high" class="block text-sm font-semibold text-gray-700 mb-1">Critical High (สูงสุด)</label>
+                                            <input type="number" step="0.1" id="temp-crit-high" class="form-control" placeholder="e.g., 32">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800 mb-3 border-b pb-2"><i class="fas fa-tint mr-2 text-blue-500"></i>Humidity Alerts (%)</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="hum-crit-low" class="block text-sm font-semibold text-gray-700 mb-1">Critical Low (ต่ำสุด)</label>
+                                            <input type="number" step="0.1" id="hum-crit-low" class="form-control" placeholder="e.g., 30">
+                                        </div>
+                                        <div>
+                                            <label for="hum-warn-low" class="block text-sm font-semibold text-gray-700 mb-1">Warning Low (เตือนต่ำ)</label>
+                                            <input type="number" step="0.1" id="hum-warn-low" class="form-control" placeholder="e.g., 40">
+                                        </div>
+                                        <div>
+                                            <label for="hum-warn-high" class="block text-sm font-semibold text-gray-700 mb-1">Warning High (เตือนสูง)</label>
+                                            <input type="number" step="0.1" id="hum-warn-high" class="form-control" placeholder="e.g., 65">
+                                        </div>
+                                        <div>
+                                            <label for="hum-crit-high" class="block text-sm font-semibold text-gray-700 mb-1">Critical High (สูงสุด)</label>
+                                            <input type="number" step="0.1" id="hum-crit-high" class="form-control" placeholder="e.g., 75">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Notifications Tab -->
+                <div id="tab-content-notifications" class="tab-content">
+                    <div class="p-6 space-y-8">
+                        
+                        <!-- Email Recipients Section -->
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-envelope mr-2 text-indigo-500"></i>Email Recipients</h3>
+                            <div class="flex gap-2 mb-3">
+                                <input type="email" id="new-email-input" class="form-control flex-grow" placeholder="add.new@recipient.com">
+                                <button id="add-email-btn" class="btn btn-secondary flex-shrink-0 !px-6"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                            <ul id="email-list" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                <!-- Emails will be dynamically added here -->
+                            </ul>
+                        </div>
+                        
+                        <!-- Telegram Section -->
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fab fa-telegram-plane mr-2 text-sky-500"></i>Telegram Recipients</h3>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Recipient Chat IDs:</label>
+                                <div class="flex gap-2 mb-3">
+                                    <input type="text" id="new-chat-id-input" class="form-control flex-grow" placeholder="Add new Chat ID">
+                                    <button id="add-chat-id-btn" class="btn btn-secondary flex-shrink-0 !px-6"><i class="fas fa-plus"></i> Add</button>
+                                </div>
+                                <ul id="chat-id-list" class="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                    <!-- Chat IDs will be dynamically added here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Tab -->
+                <div id="tab-content-report" class="tab-content">
+                    <div class="p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fas fa-calendar-alt mr-2 text-purple-500"></i>Generate Report</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="report-start-date" class="block text-sm font-semibold text-gray-700 mb-1">Start Date & Time:</label>
+                                <input type="text" id="report-start-date" class="form-control" placeholder="Select start date and time" autocomplete="off">
+                            </div>
+                            <div>
+                                <label for="report-end-date" class="block text-sm font-semibold text-gray-700 mb-1">End Date & Time:</label>
+                                <input type="text" id="report-end-date" class="form-control" placeholder="Select end date and time" autocomplete="off">
+                            </div>
+                            <div class="pt-4">
+                                <button id="generate-report-btn" class="btn btn-primary w-full"><i class="fas fa-download mr-2"></i>Generate Report</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- Confirmation Button Footer -->
+            <div class="p-6 bg-slate-50 border-t border-gray-200 rounded-b-2xl flex-shrink-0">
+                <button id="confirm-all-settings-btn" class="btn btn-primary w-full"><i class="fas fa-check-double mr-2"></i>Confirm All Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Popup -->
+    <div id="confirmation-popup" class="popup-overlay">
+        <div class="popup-content max-w-md">
+            <div class="p-8 text-center">
+                <div class="mb-4">
+                    <i class="fas fa-question-circle text-6xl text-blue-500"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">Confirm Settings</h3>
+                <p class="text-gray-600 mb-6">Are you sure you want to save these settings to the device?</p>
+                <div class="flex justify-center gap-4">
+                    <button id="final-confirm-btn" class="btn btn-primary flex-1"><i class="fas fa-check mr-2"></i>Confirm</button>
+                    <button id="cancel-confirm-btn" class="btn btn-secondary flex-1"><i class="fas fa-times mr-2"></i>Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Popup -->
+    <div id="success-popup" class="popup-overlay">
+        <div class="popup-content max-w-md">
+            <div class="p-8 text-center">
+                <div class="mb-4">
+                    <i id="success-icon" class="fas fa-check-circle text-6xl text-green-500"></i>
+                </div>
+                <h3 id="success-title" class="text-2xl font-bold text-gray-800 mb-2">Configuration Saved!</h3>
+                <p id="success-message" class="text-gray-600 mb-4">Settings have been applied successfully.</p>
+                <button onclick="closeSuccessPopup()" class="btn btn-primary w-full"><i class="fas fa-check mr-2"></i>OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+    // --- Elements ---
+    let currentRoom = null;
+    const titleElement = document.getElementById('dashboard-title');
+    const tempSection = document.getElementById('temperature-section');
+    const humSection = document.getElementById('humidity-section');
+    const tempValue = document.getElementById('temperature-value');
+    const humValue = document.getElementById('humidity-value');
+    const tempStatus = document.getElementById('temperature-status');
+    const humStatus = document.getElementById('humidity-status');
+    const lastUpdated = document.getElementById('last-updated');
+    const tempIconContainer = document.getElementById('temperature-icon-container');
+    const humIconContainer = document.getElementById('humidity-icon-container');
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const pingTime = document.getElementById('ping-time');
+    const defaultGradient = 'linear-gradient(135deg, #94a3b8, #64748b)';
+    const configPopup = document.getElementById('config-popup');
+    const successPopup = document.getElementById('success-popup');
+    const confirmationPopup = document.getElementById('confirmation-popup');
+    const emailListEl = document.getElementById('email-list');
+    const chatIdListEl = document.getElementById('chat-id-list');
+    let notificationEmails = [];
+    let telegramChatIds = [];
+    let startDatePicker, endDatePicker;
+
+    // --- Title Editing ---
+    function loadAndSetTitle() {
+        const savedTitle = localStorage.getItem('dashboardTitle') || 'Server Room Environment Monitoring';
+        titleElement.textContent = savedTitle;
+    }
+
+    function handleTitleEdit() {
+        if (document.getElementById('title-input')) return; // Already editing
+
+        const currentTitle = titleElement.textContent.trim();
+        titleElement.innerHTML = ''; // Clear the h1 to insert input
+
+        const input = document.createElement('input');
+        input.id = 'title-input';
+        input.type = 'text';
+        input.value = currentTitle;
+        input.className = 'border border-blue-300 rounded px-2 py-1 text-3xl md:text-4xl w-full text-center font-extrabold bg-blue-50';
+        
+        const saveTitle = () => {
+            const newTitle = input.value.trim() || 'Server Room Environment Monitoring';
+            titleElement.textContent = newTitle;
+            localStorage.setItem('dashboardTitle', newTitle);
+        };
+
+        input.addEventListener('blur', saveTitle);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                input.blur(); // Trigger the blur event to save
+            } else if (e.key === 'Escape') {
+                titleElement.textContent = currentTitle; // Revert without saving
+            }
+        });
+
+        titleElement.appendChild(input);
+        input.focus();
+        input.select();
+    }
+
+
+    // --- Sensor UI Update Logic ---
+    function getTempStyles(temp, thresholds) {
+        if (temp === null || isNaN(temp)) return { background: defaultGradient, status: '' };
+        if (temp > thresholds.critHigh || temp < thresholds.critLow) return { background: 'linear-gradient(135deg, #f87171, #ef4444)', status: 'Critical' };
+        if (temp > thresholds.warnHigh || temp < thresholds.warnLow) return { background: 'linear-gradient(135deg, #fb923c, #f97316)', status: 'Warning' };
+        return { background: 'linear-gradient(135deg, #4ade80, #22c55e)', status: 'Normal' };
+    }
+
+    function getHumStyles(hum, thresholds) {
+        if (hum === null || isNaN(hum)) return { background: defaultGradient, status: '' };
+        if (hum > thresholds.critHigh || hum < thresholds.critLow) return { background: 'linear-gradient(135deg, #f87171, #ef4444)', status: 'Critical' };
+        if (hum > thresholds.warnHigh || hum < thresholds.warnLow) return { background: 'linear-gradient(135deg, #fb923c, #f97316)', status: 'Warning' };
+        return { background: 'linear-gradient(135deg, #60a5fa, #3b82f6)', status: 'Normal' };
+    }
+    
+    function updateDeviceStatus(status, ms) {
+        statusIndicator.classList.remove('bg-slate-400', 'bg-green-500', 'bg-red-500');
+        if (status === 'online') {
+            statusIndicator.classList.add('bg-green-500');
+            statusText.textContent = 'ONLINE';
+            pingTime.textContent = `(${ms} ms)`;
+            pingTime.classList.remove('hidden');
+        } else {
+            statusIndicator.classList.add('bg-red-500');
+            statusText.textContent = 'OFFLINE';
+            pingTime.classList.add('hidden');
+            resetSensorCards();
+        }
+    }
+
+    function resetSensorCards() {
+        [tempSection, humSection].forEach(section => {
+            section.style.background = defaultGradient;
+            section.querySelector('.value-text').style.opacity = 0;
+            section.querySelector('p').style.opacity = 0;
+            section.querySelector('.icon-container').classList.add('opacity-0');
+            section.querySelector('h2').style.opacity = 0;
+            section.querySelector('.unit-text').style.opacity = 0;
+        });
+        lastUpdated.textContent = '';
+    }
+
+    function updateSensorUI(payload) {
+        const alertSettings = getAlertSettings(currentRoom);
+        
+        const temp = payload.avg_temp;
+        if (typeof temp === 'number' && !isNaN(temp)) {
+            const tempStyles = getTempStyles(temp, alertSettings.temp);
+            tempSection.style.background = tempStyles.background;
+            tempValue.textContent = temp.toFixed(1);
+            tempStatus.textContent = tempStyles.status;
+            tempIconContainer.classList.remove('opacity-0');
+            tempValue.classList.add('value-animate');
+            setTimeout(() => tempValue.classList.remove('value-animate'), 500);
+            [tempValue, tempStatus, tempSection.querySelector('h2'), tempSection.querySelector('.unit-text')].forEach(el => el.style.opacity = 1);
+        }
+
+        const hum = payload.avg_hum;
+        if (typeof hum === 'number' && !isNaN(hum)) {
+            const humStyles = getHumStyles(hum, alertSettings.hum);
+            humSection.style.background = humStyles.background;
+            humValue.textContent = hum.toFixed(1);
+            humStatus.textContent = humStyles.status;
+            humIconContainer.classList.remove('opacity-0');
+            humValue.classList.add('value-animate');
+            setTimeout(() => humValue.classList.remove('value-animate'), 500);
+            [humValue, humStatus, humSection.querySelector('h2'), humSection.querySelector('.unit-text')].forEach(el => el.style.opacity = 1);
+        }
+
+        if (payload.timestamp) {
+            const date = new Date(payload.timestamp);
+            const formattedDate = new Intl.DateTimeFormat('en-GB', {
+                day: 'numeric', month: 'long', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: false,
+                timeZone: 'Asia/Bangkok'
+            }).format(date);
+            lastUpdated.textContent = `${formattedDate}`;
+        }
+    }
+    
+    // --- Popup Management ---
+    function openConfigPopup() {
+        loadEthernetConfig(currentRoom);
+        loadMqttConfig(currentRoom);
+        loadAlertSettings(currentRoom);
+        loadNotificationSettings(currentRoom);
+        initializeReportPickers();
+        switchTab('ethernet');
+        configPopup.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeConfigPopup() {
+        configPopup.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function openConfirmationPopup() {
+        confirmationPopup.classList.add('active');
+    }
+
+    function closeConfirmationPopup() {
+        confirmationPopup.classList.remove('active');
+    }
+
+    function showSuccessPopup(title, message, type = 'success') {
+        const icon = document.getElementById('success-icon');
+        document.getElementById('success-title').innerHTML = title;
+        document.getElementById('success-message').innerHTML = message;
+        icon.className = 'fas text-6xl';
+        if (type === 'error') {
+            icon.classList.add('fa-times-circle', 'text-red-500');
+        } else {
+            icon.classList.add('fa-check-circle', 'text-green-500');
+        }
+        successPopup.classList.add('active');
+    }
+
+    function closeSuccessPopup() {
+        successPopup.classList.remove('active');
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-content-${tabName}`).classList.add('active');
+        document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+    }
+    
+    function togglePasswordVisibility(elementId, button) {
+        const input = document.getElementById(elementId);
+        const icon = button.querySelector('i');
+        if (input.type === "password") {
+            input.type = "text";
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            input.type = "password";
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    // --- Config Validation & Saving ---
+    function isValidIP(ip) {
+        const regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+        return regex.test(ip);
+    }
+    function isValidHostname(hostname) {
+        const hostnameRegex = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]*[A-Za-z0-9])$/;
+        return hostnameRegex.test(hostname);
+    }
+    function validateEthernetConfig() {
+        const fields = { ip: 'IP Address', subnet: 'Subnet Mask', gateway: 'Gateway', dns: 'DNS Server' };
+        for (const [id, name] of Object.entries(fields)) {
+            const value = document.getElementById(id).value.trim();
+            if (!value) {
+                showSuccessPopup(`⚠️ Missing ${name}`, `Please fill in the ${name} field.`, "error");
+                return false;
+            }
+            if (!isValidIP(value)) {
+                showSuccessPopup(`❌ Invalid ${name}`, `Please enter a valid format for ${name}.`, "error");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function validateMqttConfig() {
+        const broker = document.getElementById('mqtt-broker').value.trim();
+        const port = document.getElementById('mqtt-port').value.trim();
+        if (!broker) {
+            showSuccessPopup('❌ Invalid Broker', 'Please enter a valid Broker URL or IP address.', 'error');
+            return false;
+        }
+        if (!port) {
+            showSuccessPopup('❌ Invalid Port', 'Please enter a valid Port number.', 'error');
+            return false;
+        }
+        const brokerWithProtocol = broker.startsWith('mqtt://') ? broker : `mqtt://${broker}`;
+        const brokerAddress = new URL(brokerWithProtocol).hostname;
+        if (!isValidIP(brokerAddress) && !isValidHostname(brokerAddress)) {
+            showSuccessPopup('❌ Invalid Broker', 'Please enter a valid IP address or hostname (e.g., 192.168.1.10 or my-broker.com).', 'error');
+            return false;
+        }
+        if (isNaN(port) || port < 1 || port > 65535) {
+            showSuccessPopup('❌ Invalid Port', 'Port must be a number between 1 and 65535.', 'error');
+            return false;
+        }
+        return true;
+    }
+    
+
+    function validateAlertSettings() {
+        const temp = {
+            critLow: parseFloat(document.getElementById('temp-crit-low').value),
+            warnLow: parseFloat(document.getElementById('temp-warn-low').value),
+            warnHigh: parseFloat(document.getElementById('temp-warn-high').value),
+            critHigh: parseFloat(document.getElementById('temp-crit-high').value),
+        };
+        if (!(temp.critLow < temp.warnLow && temp.warnLow < temp.warnHigh && temp.warnHigh < temp.critHigh)) {
+            showSuccessPopup("❌ Invalid Temperature Range", "Values must be in ascending order: <br>Crit Low < Warn Low < Warn High < Crit High", "error");
+            return false;
+        }
+
+        const hum = {
+            critLow: parseFloat(document.getElementById('hum-crit-low').value),
+            warnLow: parseFloat(document.getElementById('hum-warn-low').value),
+            warnHigh: parseFloat(document.getElementById('hum-warn-high').value),
+            critHigh: parseFloat(document.getElementById('hum-crit-high').value),
+        };
+        if (!(hum.critLow < hum.warnLow && hum.warnLow < hum.warnHigh && hum.warnHigh < hum.critHigh)) {
+            showSuccessPopup("❌ Invalid Humidity Range", "Values must be in ascending order: <br>Crit Low < Warn Low < Warn High < Crit High", "error");
+            return false;
+        }
+        return true;
+    }
+
+    function saveConfigForRoom(room) {
+        const ethernetConfig = {
+            ip: document.getElementById('ip').value.trim(),
+            subnet: document.getElementById('subnet').value.trim(),
+            gateway: document.getElementById('gateway').value.trim(),
+            dns: document.getElementById('dns').value.trim()
+        };
+        localStorage.setItem(`ethernetConfig_${room}`, JSON.stringify(ethernetConfig));
+
+        const mqttConfig = {
+            broker: document.getElementById('mqtt-broker').value.trim(),
+            port: document.getElementById('mqtt-port').value.trim(),
+            user: document.getElementById('mqtt-user').value.trim(),
+            pass: btoa(document.getElementById('mqtt-pass').value.trim()) // Obfuscate password
+        };
+        localStorage.setItem(`mqttConfig_${room}`, JSON.stringify(mqttConfig));
+
+        const alertSettings = {
+            temp: {
+                critLow: parseFloat(document.getElementById('temp-crit-low').value),
+                warnLow: parseFloat(document.getElementById('temp-warn-low').value),
+                warnHigh: parseFloat(document.getElementById('temp-warn-high').value),
+                critHigh: parseFloat(document.getElementById('temp-crit-high').value),
+            },
+            hum: {
+                critLow: parseFloat(document.getElementById('hum-crit-low').value),
+                warnLow: parseFloat(document.getElementById('hum-warn-low').value),
+                warnHigh: parseFloat(document.getElementById('hum-warn-high').value),
+                critHigh: parseFloat(document.getElementById('hum-crit-high').value),
+            }
+        };
+        localStorage.setItem(`alertSettings_${room}`, JSON.stringify(alertSettings));
+
+        const notificationSettings = {
+            recipients: notificationEmails,
+            telegram: { chatIds: telegramChatIds }
+        };
+        localStorage.setItem(`notificationSettings_${room}`, JSON.stringify(notificationSettings));
+    }
+
+    function handleFinalConfirmation() {
+        closeConfirmationPopup();
+
+        if (!validateEthernetConfig()) { switchTab('ethernet'); return; }
+        if (!validateMqttConfig()) { switchTab('mqtt'); return; }
+        if (!validateAlertSettings()) { switchTab('alerts'); return; }
+
+        saveConfigForRoom(currentRoom);
+        const allSettings = collectAllSettings();
+        if (typeof uibuilder !== 'undefined') {
+            uibuilder.send({ 
+                topic: `esp32/control/${currentRoom}/set_config`,
+                payload: allSettings
+            });
+        }
+        
+        closeConfigPopup();
+        showSuccessPopup('All Settings Saved',`Settings for ${currentRoom} have been saved locally.`);
+    }
+
+    // --- Config Loading ---
+    function loadEthernetConfig(room) {
+        const config = JSON.parse(localStorage.getItem(`ethernetConfig_${room}`)) || {};
+        document.getElementById('ip').value = config.ip || '';
+        document.getElementById('subnet').value = config.subnet || '';
+        document.getElementById('gateway').value = config.gateway || '';
+        document.getElementById('dns').value = config.dns || '';
+    }
+
+    function loadMqttConfig(room) {
+        const config = JSON.parse(localStorage.getItem(`mqttConfig_${room}`)) || {};
+        document.getElementById('mqtt-broker').value = config.broker || '';
+        document.getElementById('mqtt-port').value = config.port || '';
+        document.getElementById('mqtt-user').value = config.user || '';
+        try {
+            document.getElementById('mqtt-pass').value = config.pass ? atob(config.pass) : '';
+        } catch(e) {
+            document.getElementById('mqtt-pass').value = '';
+        }
+    }
+
+    function getAlertSettings(room) {
+        const defaults = {
+            temp: { critLow: 18, warnLow: 22, warnHigh: 28, critHigh: 32 },
+            hum:  { critLow: 30, warnLow: 40, warnHigh: 65, critHigh: 75 }
+        };
+        const saved = JSON.parse(localStorage.getItem(`alertSettings_${room}`));
+        return {
+            temp: { ...defaults.temp, ...(saved ? saved.temp : {}) },
+            hum: { ...defaults.hum, ...(saved ? saved.hum : {}) }
+        };
+    }
+
+    function loadAlertSettings(room) {
+        const settings = getAlertSettings(room);
+        Object.entries(settings.temp).forEach(([key, value]) => {
+            const elId = `temp-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+            const el = document.getElementById(elId);
+            if (el) el.value = value;
+        });
+        Object.entries(settings.hum).forEach(([key, value]) => {
+            const elId = `hum-${key.replace(/([A-Z])/g, "-$1").toLowerCase()}`;
+            const el = document.getElementById(elId);
+            if (el) el.value = value;
+        });
+    }
+
+    function loadNotificationSettings(room) {
+        const storedSettings = JSON.parse(localStorage.getItem(`notificationSettings_${room}`)) || {};
+        notificationEmails = storedSettings.recipients || [];
+        renderEmailList();
+        const telegram = storedSettings.telegram || {};
+        telegramChatIds = telegram.chatIds || [];
+        renderChatIdList();
+    }
+
+    // --- List Management ---
+    function renderEmailList() {
+        renderList(emailListEl, notificationEmails, 'email');
+    }
+    function renderChatIdList() {
+        renderList(chatIdListEl, telegramChatIds, 'chat-id');
+    }
+    function renderList(ulElement, items, dataAttribute) {
+        ulElement.innerHTML = '';
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'list-item';
+            li.innerHTML = `
+                <span>${item}</span>
+                <button class="remove-item-btn" data-${dataAttribute}="${item}" title="Remove"><i class="fas fa-trash-alt"></i></button>
+            `;
+            ulElement.appendChild(li);
+        });
+    }
+    
+    // --- Report Generation ---
+    function initializeReportPickers() {
+        const options = {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true
+        };
+        startDatePicker = flatpickr("#report-start-date", options);
+        endDatePicker = flatpickr("#report-end-date", options);
+    }
+
+    function handleGenerateReport() {
+        const startDate = startDatePicker.selectedDates[0];
+        const endDate = endDatePicker.selectedDates[0];
+
+        if (!startDate || !endDate) {
+            showSuccessPopup('❌ Missing Dates', 'Please select both a start and end date/time.', 'error');
+            return;
+        }
+        if (startDate >= endDate) {
+            showSuccessPopup('❌ Invalid Range', 'The start date must be before the end date.', 'error');
+            return;
+        }
+
+        // Send command to Node-RED to generate the report
+        if (typeof uibuilder !== 'undefined') {
+            uibuilder.send({
+                topic: `reports/${currentRoom}/generate`,
+                payload: {
+                    command: "generate_report",
+                    start_iso: startDate.toISOString(),
+                    end_iso: endDate.toISOString()
+                }
+            });
+            showSuccessPopup('Report Requested', `A report for ${currentRoom} from ${startDate.toLocaleString()} to ${endDate.toLocaleString()} has been requested.`);
+        } else {
+            showSuccessPopup('Offline', 'Cannot request report while offline.', 'error');
+        }
+    }
+
+
+    // --- Event Listeners ---
+    document.getElementById('confirm-all-settings-btn').addEventListener('click', openConfirmationPopup);
+    document.getElementById('final-confirm-btn').addEventListener('click', handleFinalConfirmation);
+    document.getElementById('cancel-confirm-btn').addEventListener('click', closeConfirmationPopup);
+    document.getElementById('generate-report-btn').addEventListener('click', handleGenerateReport);
+    titleElement.addEventListener('dblclick', handleTitleEdit);
+
+    document.getElementById('add-email-btn').addEventListener('click', () => {
+        const input = document.getElementById('new-email-input');
+        const newItem = input.value.trim().toLowerCase();
+        if (newItem && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newItem)) {
+            if (!notificationEmails.includes(newItem)) {
+                notificationEmails.push(newItem);
+                renderEmailList();
+                input.value = '';
+            } else {
+                showSuccessPopup('Email Exists', 'This email is already in the list.', 'error');
+            }
+        } else {
+            showSuccessPopup('Invalid Email', 'Please enter a valid email address.', 'error');
+        }
+    });
+
+    document.getElementById('add-chat-id-btn').addEventListener('click', () => {
+        const input = document.getElementById('new-chat-id-input');
+        const newItem = input.value.trim();
+        if (newItem && /^-?\d+$/.test(newItem)) {
+             if (!telegramChatIds.includes(newItem)) {
+                telegramChatIds.push(newItem);
+                renderChatIdList();
+                input.value = '';
+            } else {
+                showSuccessPopup('Chat ID Exists', 'This Chat ID is already in the list.', 'error');
+            }
+        } else {
+            showSuccessPopup('Invalid Chat ID', 'Chat ID must be a number.', 'error');
+        }
+    });
+
+    emailListEl.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('.remove-item-btn');
+        if (removeBtn) {
+            const itemToRemove = removeBtn.dataset.email;
+            notificationEmails = notificationEmails.filter(item => item !== itemToRemove);
+            renderEmailList();
+        }
+    });
+    
+    chatIdListEl.addEventListener('click', (event) => {
+        const removeBtn = event.target.closest('.remove-item-btn');
+        if (removeBtn) {
+            const itemToRemove = removeBtn.dataset.chatId;
+            telegramChatIds = telegramChatIds.filter(item => item !== itemToRemove);
+            renderChatIdList();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAndSetTitle();
+        resetSensorCards();
+        document.querySelectorAll('.open-config-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentRoom = btn.dataset.room;
+                openConfigPopup();
+            });
+        });    
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            if (successPopup.classList.contains('active')) {
+                closeSuccessPopup();
+            } else if (confirmationPopup.classList.contains('active')) {
+                closeConfirmationPopup();
+            } else if (configPopup.classList.contains('active')) {
+                closeConfigPopup();
+            }
+        }
+    });
+    function collectAllSettings() {
+        const ethernetConfig = {
+            ip: document.getElementById('ip').value.trim(),
+            subnet: document.getElementById('subnet').value.trim(),
+            gateway: document.getElementById('gateway').value.trim(),
+            dns: document.getElementById('dns').value.trim()
+        };
+
+        const mqttConfig = {
+            broker: document.getElementById('mqtt-broker').value.trim(),
+            port: document.getElementById('mqtt-port').value.trim(),
+            user: document.getElementById('mqtt-user').value.trim(),
+            pass: document.getElementById('mqtt-pass').value.trim()
+        };
+
+        const alertSettings = {
+            temp: {
+                critLow: parseFloat(document.getElementById('temp-crit-low').value) || null,
+                warnLow: parseFloat(document.getElementById('temp-warn-low').value) || null,
+                warnHigh: parseFloat(document.getElementById('temp-warn-high').value) || null,
+                critHigh: parseFloat(document.getElementById('temp-crit-high').value) || null,
+            },
+            hum: {
+                critLow: parseFloat(document.getElementById('hum-crit-low').value) || null,
+                warnLow: parseFloat(document.getElementById('hum-warn-low').value) || null,
+                warnHigh: parseFloat(document.getElementById('hum-warn-high').value) || null,
+                critHigh: parseFloat(document.getElementById('hum-crit-high').value) || null,
+            }
+        };
+        const notificationSettings = {
+            emails: notificationEmails,
+            telegram_chat_ids: telegramChatIds
+        };
+        return {
+            ethernet: ethernetConfig,
+            mqtt: mqttConfig,
+            alerts: alertSettings,
+            notifications: notificationSettings
+        };
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/node-red-contrib-uibuilder@7.4.2/front-end/uibuilder.iife.min.js"></script>
+<script>
+    if (typeof uibuilder !== 'undefined') {
+        uibuilder.onChange('msg', function(msg) {
+            let data = msg ? msg.payload : null;
+
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error("❌ Failed to parse msg.payload string:", e);
+                    return;
+                }
+            }
+
+            if (data && typeof data === 'object') {
+                if (data.status) {
+                    updateDeviceStatus(data.status, data.ping_ms);
+                }
+                if (data.mac_address) {
+                    document.getElementById('mac-address').textContent = data.mac_address;
+                }
+                updateSensorUI(data);
+            } else {
+                console.warn("⚠️ Received unusable data from uibuilder:", msg);
+            }
+        });
+    } else {
+        console.warn("⚠️ uibuilder not found. Make sure the uibuilder script is loaded.");
+    }
+</script>
+</body>
+</html>
