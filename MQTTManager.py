@@ -71,12 +71,8 @@ class MQTT_Manager:
                         "mqtt": mqtt_config,
                         "alerts": {
                             "temp_crit_low": dht22_config.get("CON_TEMP_MIN"),
-                            "temp_warn_low": dht22_config.get("CON_TEMP_MIN"),
-                            "temp_warn_high": dht22_config.get("CON_TEMP_MAX"),
                             "temp_crit_high": dht22_config.get("CON_TEMP_MAX"),
                             "hum_crit_low": dht22_config.get("CON_HUM_MIN"),
-                            "hum_warn_low": dht22_config.get("CON_HUM_MIN"),
-                            "hum_warn_high": dht22_config.get("CON_HUM_MAX"),
                             "hum_crit_high": dht22_config.get("CON_HUM_MAX")
                         }
                     }
