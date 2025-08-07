@@ -1142,10 +1142,10 @@
                     document.getElementById('mac-address').textContent = data.mac_address;
                 }
                 updateSensorUI(data);
-                if (topic === `esp32/response/RoomA/config`) { 
+                if (topic && topic.startsWith('esp32/response/') && topic.endsWith('/config')) {
                     console.log("Received config from device:", data);
                     if (data.ethernet) {
-                        fillEthernetForm(data.ethernet);
+                        fillEthernetForm(data.ethernet, data.mac_address);
                     }
                     if (data.mqtt) {
                         fillMqttForm(data.mqtt);
