@@ -932,6 +932,27 @@
             showSuccessPopup('Offline', 'Cannot request report while offline.', 'error');
         }
     }
+    function fillEthernetForm(config) {
+        document.getElementById('ip').value = config.eth_ip || '';
+        document.getElementById('subnet').value = config.eth_subnet || '';
+        document.getElementById('gateway').value = config.eth_gateway || '';
+        document.getElementById('dns').value = config.eth_dns || '';
+        document.getElementById('mac-address').textContent = config.mac || '';
+    }
+    function fillMqttForm(config) {
+        document.getElementById('mqtt-broker').value = config.broker || '';
+        document.getElementById('mqtt-port').value = config.port || '';
+        document.getElementById('mqtt-user').value = config.user || '';
+        document.getElementById('mqtt-pass').value = config.password || ''; 
+    }
+    function fillAlertsForm(settings) {
+    if (settings) {
+        document.getElementById('temp-crit-low').value = settings.temp_crit_low || '';
+        document.getElementById('temp-crit-high').value = settings.temp_crit_high || '';
+        document.getElementById('hum-crit-low').value = settings.hum_crit_low || '';
+        document.getElementById('hum-crit_high').value = settings.hum_crit_high || '';
+        }
+    }
 
 
     // --- Event Listeners ---
