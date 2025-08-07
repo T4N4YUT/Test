@@ -580,7 +580,6 @@
 
     function updateSensorUI(payload) {
         const alertSettings = getAlertSettings(currentRoom);
-        
         const temp = payload.avg_temp;
         if (typeof temp === 'number' && !isNaN(temp)) {
             const tempStyles = getTempStyles(temp, alertSettings.temp);
