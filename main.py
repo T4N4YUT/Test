@@ -14,13 +14,14 @@ async def main():
     mac = ethernet.get_mac()
     print("💻 MAC Address:", mac)
     time_mgr = Time_Manager(ethernet)
-    mqtt_mgr = MQTT_Manager(mac, ethernet, dht_mgr)
     dht_mgr = DHT22_Manager(
         time_manager=time_mgr,
         ethernet=ethernet,
-        mqtt_manager=mqtt_mgr,
+        mqtt_manager=None,
         led_manager=led_mgr
     )
+    mqtt_mgr = MQTT_Manager(mac, ethernet, dht_mgr)
+    dht_mgr.mqtt_manager = mqtt_mgr
     asyncio.create_task(ethernet.check_reset_config(mqtt_manager=mqtt_mgr, dht22_manager=dht_mgr))
     asyncio.create_task(ethernet.led_status_manager())
     asyncio.create_task(ethernet.retry_connect_loop())
@@ -33,4 +34,3 @@ try:
 finally:
     asyncio.new_event_loop()
     gc.collect()
-
