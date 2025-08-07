@@ -9,7 +9,7 @@
         "upload": false,
         "swaggerDoc": "",
         "x": 350,
-        "y": 2000,
+        "y": 1740,
         "wires": [
             [
                 "function"
@@ -29,7 +29,7 @@
         "finalize": "",
         "libs": [],
         "x": 510,
-        "y": 2000,
+        "y": 1740,
         "wires": [
             [
                 "http response"
@@ -44,7 +44,7 @@
         "statusCode": "",
         "headers": {},
         "x": 650,
-        "y": 2000,
+        "y": 1740,
         "wires": []
     },
     {
@@ -140,7 +140,7 @@
         "finalize": "",
         "libs": [],
         "x": 510,
-        "y": 1960,
+        "y": 2060,
         "wires": [
             [
                 "dc1d4d51e8a2b26b"
@@ -170,7 +170,7 @@
         "repair": false,
         "outputs": 2,
         "x": 660,
-        "y": 1960,
+        "y": 2060,
         "wires": [
             [
                 "a84ef445fedef9e9"
@@ -193,7 +193,7 @@
         "finalize": "",
         "libs": [],
         "x": 810,
-        "y": 1960,
+        "y": 2060,
         "wires": [
             [
                 "31155ce3490e3f16"
@@ -233,6 +233,34 @@
         ]
     },
     {
+        "id": "31155ce3490e3f16",
+        "type": "mysql",
+        "z": "c0cdca176eedd227",
+        "mydb": "5e560f07cfec117a",
+        "name": "Uptime",
+        "x": 940,
+        "y": 2060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "aa62b8b4ab44d73e",
+        "type": "debug",
+        "z": "c0cdca176eedd227",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 1820,
+        "wires": []
+    },
+    {
         "id": "0b3358f711e7ed0b",
         "type": "uibuilder",
         "z": "c0cdca176eedd227",
@@ -258,36 +286,89 @@
             [
                 "aa62b8b4ab44d73e"
             ],
-            []
+            [
+                "e5d4b2fc7b68de6a"
+            ]
         ]
     },
     {
-        "id": "31155ce3490e3f16",
-        "type": "mysql",
+        "id": "e5d4b2fc7b68de6a",
+        "type": "switch",
         "z": "c0cdca176eedd227",
-        "mydb": "5e560f07cfec117a",
-        "name": "Uptime",
-        "x": 800,
-        "y": 2000,
+        "name": "Check Command",
+        "property": "payload.command",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "get_config",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "set_config",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 870,
+        "y": 1940,
         "wires": [
-            []
+            [
+                "3abe5a332f509bde"
+            ],
+            [
+                "9676fb068c0a7c60"
+            ]
         ]
     },
     {
-        "id": "aa62b8b4ab44d73e",
-        "type": "debug",
+        "id": "3abe5a332f509bde",
+        "type": "mqtt out",
         "z": "c0cdca176eedd227",
-        "name": "debug 1",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 860,
-        "y": 1920,
+        "name": "Send Config Request",
+        "topic": "esp32/commands",
+        "qos": "1",
+        "retain": "false",
+        "broker": "8301192ec347dbc9",
+        "x": 1080,
+        "y": 1900,
         "wires": []
+    },
+    {
+        "id": "9676fb068c0a7c60",
+        "type": "mqtt out",
+        "z": "c0cdca176eedd227",
+        "name": "Send Config Command",
+        "topic": "esp32/set_config",
+        "qos": "1",
+        "retain": "false",
+        "broker": "8301192ec347dbc9",
+        "x": 1090,
+        "y": 1960,
+        "wires": []
+    },
+    {
+        "id": "f1b4378bc5c8f2ca",
+        "type": "mqtt in",
+        "z": "c0cdca176eedd227",
+        "name": "Get Config",
+        "topic": "esp32/response/+/config",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "8301192ec347dbc9",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 560,
+        "y": 1980,
+        "wires": [
+            [
+                "0b3358f711e7ed0b"
+            ]
+        ]
     },
     {
         "id": "8301192ec347dbc9",
