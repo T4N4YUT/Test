@@ -8,26 +8,19 @@ from LEDManager import LED_Manager
 from machine import reset
 
 async def main():
-    # สร้าง instance ของ EthernetManager และ LEDManager ก่อน
     ethernet = Ethernet_Manager()
     led_mgr = LED_Manager()
-
-    # ทำการเชื่อมต่อ Ethernet ก่อนที่จะเรียกใช้ MAC Address
     await ethernet.connect()
     mac = ethernet.get_mac()
     print("💻 MAC Address:", mac)
-
-    # สร้าง instance ของ Manager อื่นๆ หลังจากได้ MAC Address
     time_mgr = Time_Manager(ethernet)
-    mqtt_mgr = MQTT_Manager(mac)
+    mqtt_mgr = MQTT_Manager(mac, ethernet, dht_mgr)
     dht_mgr = DHT22_Manager(
         time_manager=time_mgr,
         ethernet=ethernet,
         mqtt_manager=mqtt_mgr,
         led_manager=led_mgr
     )
-
-    # เริ่ม Service ทั้งหมดพร้อมกันเป็น asyncio tasks
     asyncio.create_task(ethernet.check_reset_config(mqtt_manager=mqtt_mgr, dht22_manager=dht_mgr))
     asyncio.create_task(ethernet.led_status_manager())
     asyncio.create_task(ethernet.retry_connect_loop())
@@ -40,3 +33,4 @@ try:
 finally:
     asyncio.new_event_loop()
     gc.collect()
+
