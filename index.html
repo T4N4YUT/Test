@@ -470,7 +470,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
     // --- Elements ---
     let currentRoom = null;
     const titleElement = document.getElementById('dashboard-title');
@@ -943,15 +944,20 @@
         document.getElementById('mqtt-broker').value = config.broker || '';
         document.getElementById('mqtt-port').value = config.port || '';
         document.getElementById('mqtt-user').value = config.user || '';
-        document.getElementById('mqtt-pass').value = config.password || ''; 
+        document.getElementById('mqtt-pass').value = config.password || '';
     }
+
     function fillAlertsForm(settings) {
     if (settings) {
         document.getElementById('temp-crit-low').value = settings.temp_crit_low || '';
+        document.getElementById('temp-warn-low').value = settings.temp_warn_low || '';
+        document.getElementById('temp-warn-high').value = settings.temp_warn_high || '';
         document.getElementById('temp-crit-high').value = settings.temp_crit_high || '';
         document.getElementById('hum-crit-low').value = settings.hum_crit_low || '';
-        document.getElementById('hum-crit_high').value = settings.hum_crit_high || '';
-        }
+        document.getElementById('hum-warn-low').value = settings.hum_warn_low || '';
+        document.getElementById('hum-warn-high').value = settings.hum_warn_high || '';
+        document.getElementById('hum-crit-high').value = settings.hum_crit_high || '';
+    }
     }
 
 
@@ -1086,12 +1092,12 @@
             console.warn("uibuilder not found or not connected, cannot request config.");
         }
     }
-    function fillEthernetForm(config) {
+    function fillEthernetForm(config, macAddress) {
         document.getElementById('ip').value = config.eth_ip || '';
         document.getElementById('subnet').value = config.eth_subnet || '';
         document.getElementById('gateway').value = config.eth_gateway || '';
         document.getElementById('dns').value = config.eth_dns || '';
-        document.getElementById('mac-address').textContent = config.mac || '';
+        document.getElementById('mac-address').textContent = macAddress || '';
     }
     function fillMqttForm(config) {
         document.getElementById('mqtt-broker').value = config.broker || '';
@@ -1101,16 +1107,16 @@
     }
 
     function fillAlertsForm(settings) {
-        if (settings) {
-            document.getElementById('temp-crit-low').value = settings.temp_crit_low || '';
-            document.getElementById('temp-warn-low').value = settings.temp_warn_low || '';
-            document.getElementById('temp-warn-high').value = settings.temp_warn_high || '';
-            document.getElementById('temp-crit-high').value = settings.temp_crit_high || '';
-            document.getElementById('hum-crit-low').value = settings.hum_crit_low || '';
-            document.getElementById('hum-warn-low').value = settings.hum_warn_low || '';
-            document.getElementById('hum-warn-high').value = settings.hum_warn_high || '';
-            document.getElementById('hum-crit-high').value = settings.hum_crit_high || '';
-        }
+    if (settings) {
+        document.getElementById('temp-crit-low').value = settings.temp_crit_low || '';
+        document.getElementById('temp-warn-low').value = settings.temp_warn_low || '';
+        document.getElementById('temp-warn-high').value = settings.temp_warn_high || '';
+        document.getElementById('temp-crit-high').value = settings.temp_crit_high || '';
+        document.getElementById('hum-crit-low').value = settings.hum_crit_low || '';
+        document.getElementById('hum-warn-low').value = settings.hum_warn_low || '';
+        document.getElementById('hum-warn-high').value = settings.hum_warn_high || '';
+        document.getElementById('hum-crit-high').value = settings.hum_crit_high || '';
+    }
     }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/node-red-contrib-uibuilder@7.4.2/front-end/uibuilder.iife.min.js"></script>
