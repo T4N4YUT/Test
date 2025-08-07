@@ -625,6 +625,7 @@
         switchTab('ethernet');
         configPopup.classList.add('active');
         document.body.style.overflow = 'hidden';
+        requestConfigFromDevice(currentRoom);
     }
 
     function closeConfigPopup() {
@@ -1049,13 +1050,51 @@
             notifications: notificationSettings
         };
     }
+    function requestConfigFromDevice(room) {
+        if (typeof uibuilder !== 'undefined' && uibuilder.get) {
+            const requestTopic = `esp32/commands`;
+            console.log(`Sending MQTT request to topic: ${requestTopic}`);
+            uibuilder.send({
+                topic: requestTopic,
+                payload: '{"command":"get_config"}'
+            });
+        } else {
+            console.warn("uibuilder not found or not connected, cannot request config.");
+        }
+    }
+    function fillEthernetForm(config) {
+        document.getElementById('ip').value = config.eth_ip || '';
+        document.getElementById('subnet').value = config.eth_subnet || '';
+        document.getElementById('gateway').value = config.eth_gateway || '';
+        document.getElementById('dns').value = config.eth_dns || '';
+        document.getElementById('mac-address').textContent = config.mac || '';
+    }
+    function fillMqttForm(config) {
+        document.getElementById('mqtt-broker').value = config.broker || '';
+        document.getElementById('mqtt-port').value = config.port || '';
+        document.getElementById('mqtt-user').value = config.user || '';
+        document.getElementById('mqtt-pass').value = config.password || ''; // เนื่องจาก password ถูกส่งกลับมาด้วย
+    }
+
+    function fillAlertsForm(settings) {
+        if (settings) {
+            document.getElementById('temp-crit-low').value = settings.temp_crit_low || '';
+            document.getElementById('temp-warn-low').value = settings.temp_warn_low || '';
+            document.getElementById('temp-warn-high').value = settings.temp_warn_high || '';
+            document.getElementById('temp-crit-high').value = settings.temp_crit_high || '';
+            document.getElementById('hum-crit-low').value = settings.hum_crit_low || '';
+            document.getElementById('hum-warn-low').value = settings.hum_warn_low || '';
+            document.getElementById('hum-warn-high').value = settings.hum_warn_high || '';
+            document.getElementById('hum-crit-high').value = settings.hum_crit_high || '';
+        }
+    }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/node-red-contrib-uibuilder@7.4.2/front-end/uibuilder.iife.min.js"></script>
 <script>
     if (typeof uibuilder !== 'undefined') {
         uibuilder.onChange('msg', function(msg) {
             let data = msg ? msg.payload : null;
-
+            let topic = msg.topic;
             if (typeof data === 'string') {
                 try {
                     data = JSON.parse(data);
@@ -1073,6 +1112,18 @@
                     document.getElementById('mac-address').textContent = data.mac_address;
                 }
                 updateSensorUI(data);
+                if (topic === `esp32/response/RoomA/config`) { 
+                    console.log("Received config from device:", data);
+                    if (data.ethernet) {
+                        fillEthernetForm(data.ethernet);
+                    }
+                    if (data.mqtt) {
+                        fillMqttForm(data.mqtt);
+                    }
+                    if (data.alerts) {
+                        fillAlertsForm(data.alerts);
+                    }
+                }
             } else {
                 console.warn("⚠️ Received unusable data from uibuilder:", msg);
             }
