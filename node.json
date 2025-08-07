@@ -1,0 +1,333 @@
+[
+    {
+        "id": "inject",
+        "type": "http in",
+        "z": "c0cdca176eedd227",
+        "name": "",
+        "url": "/api/time",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 350,
+        "y": 2000,
+        "wires": [
+            [
+                "function"
+            ]
+        ]
+    },
+    {
+        "id": "function",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "Sync Time",
+        "func": "msg.payload = { iso: new Date().toISOString() };\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 2000,
+        "wires": [
+            [
+                "http response"
+            ]
+        ]
+    },
+    {
+        "id": "http response",
+        "type": "http response",
+        "z": "c0cdca176eedd227",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 650,
+        "y": 2000,
+        "wires": []
+    },
+    {
+        "id": "6c58c5a7bc76538b",
+        "type": "mqtt in",
+        "z": "c0cdca176eedd227",
+        "name": "Temperature and Humidity",
+        "topic": "esp32/+/dht",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "8301192ec347dbc9",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 390,
+        "y": 1860,
+        "wires": [
+            [
+                "723143dc5b11e182",
+                "545246ce83427711"
+            ]
+        ]
+    },
+    {
+        "id": "723143dc5b11e182",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "Data",
+        "func": "const parts = msg.topic.split('/');\nconst macAddress = parts[1];\n\nmsg.payload = {\n    'mac_address': macAddress,\n    'avg_temp': msg.payload.avg_temp,\n    'avg_hum': msg.payload.avg_hum,\n    'timestamp': msg.payload.timestamp\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 1860,
+        "wires": [
+            [
+                "0b3358f711e7ed0b"
+            ]
+        ]
+    },
+    {
+        "id": "b83235672360f71c",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "Status",
+        "func": "// msg.payload will be a number (ms) on success, and false on failure.\n\nif (msg.payload === false) {\n    msg.payload = { status: 'offline' };\n} else {\n    // On success, include the ping time\n    msg.payload = { \n        status: 'online',\n        ping_ms: msg.payload \n    };\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 1920,
+        "wires": [
+            [
+                "0b3358f711e7ed0b"
+            ]
+        ]
+    },
+    {
+        "id": "049c3eab2865c81e",
+        "type": "ping",
+        "z": "c0cdca176eedd227",
+        "protocol": "Automatic",
+        "mode": "timed",
+        "name": "Server Room 1",
+        "host": "192.168.42.30",
+        "timer": "1",
+        "inputs": 0,
+        "x": 360,
+        "y": 1940,
+        "wires": [
+            [
+                "435f24f2115ddd15",
+                "b83235672360f71c"
+            ]
+        ]
+    },
+    {
+        "id": "435f24f2115ddd15",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "Status",
+        "func": "// Get devices context\nlet devices = flow.get('devices') || {};\n\n// Map IP to MAC and Room Name\nconst ipMap = {\n  '192.168.42.30': { mac: '08:D1:F9:3A:48:FF', room: 'Server Room 1' }\n};\n\nconst ip = msg.topic;\nif (!ipMap[ip]) return null;\n\nconst mac = ipMap[ip].mac;\nconst room = ipMap[ip].room;\nconst now = Date.now();\n\nlet device = devices[mac] || { status: null, lastCheck: 0, room: room };\n\nconst newStatus = (msg.payload === false) ? 'offline' : 'online';\n\nif (newStatus !== device.status) {\n    device.status = newStatus;\n    device.lastCheck = now;\n    devices[mac] = device;\n    flow.set('devices', devices);\n    return {\n        payload: {\n            mac: mac,\n            room: room,\n            status: newStatus,\n            event_time: new Date().toISOString()\n        }\n    };\n}\n\ndevice.lastCheck = now;\ndevices[mac] = device;\nflow.set('devices', devices);\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 1960,
+        "wires": [
+            [
+                "dc1d4d51e8a2b26b"
+            ]
+        ]
+    },
+    {
+        "id": "dc1d4d51e8a2b26b",
+        "type": "switch",
+        "z": "c0cdca176eedd227",
+        "name": "Status Switch",
+        "property": "payload.status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "offline",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 660,
+        "y": 1960,
+        "wires": [
+            [
+                "a84ef445fedef9e9"
+            ],
+            [
+                "a84ef445fedef9e9"
+            ]
+        ]
+    },
+    {
+        "id": "a84ef445fedef9e9",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "SQL",
+        "func": "function toLocalSqlDate(d) {\n  d = d || new Date();\n  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);\n  return local.toISOString().slice(0,19).replace('T',' ');\n}\nlet data = msg.payload;\nlet time = data.event_time\n  ? toLocalSqlDate(new Date(data.event_time))\n  : toLocalSqlDate();\n\nmsg.topic = `\n  INSERT INTO esp_status_log\n    (mac, room, status, time)\n  VALUES\n    (\n      '${data.mac}',\n      '${data.room.replace(/'/g,\"''\")}',\n      '${data.status}',\n      '${time}'\n    );\n`.replace(/\\s+/g,' ');\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 1960,
+        "wires": [
+            [
+                "31155ce3490e3f16"
+            ]
+        ]
+    },
+    {
+        "id": "4d24043fdf548bbc",
+        "type": "mysql",
+        "z": "c0cdca176eedd227",
+        "mydb": "5e560f07cfec117a",
+        "name": "Dht22",
+        "x": 690,
+        "y": 1820,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "545246ce83427711",
+        "type": "function",
+        "z": "c0cdca176eedd227",
+        "name": "SQL",
+        "func": "\nlet d = msg.payload;\n\nif (!d.mac || !d.timestamp) {\n    node.error(\"❌ Missing mac or timestamp\", d);\n    return null;\n}\n\nmsg.topic = \"INSERT INTO `dht_22` (mac, pin, timestamp, min_temp, max_temp, avg_temp, min_hum, max_hum, avg_hum, temp_status,hum_status) VALUES (?,?,?,?,?,?,?,?,?,?,?);\";\n\nmsg.payload = [\n    d.mac,\n    d.pin,\n    d.timestamp,\n    d.min_temp,\n    d.max_temp,\n    d.avg_temp,\n    d.min_hum,\n    d.max_hum,\n    d.avg_hum,\n    d.temp_status,\n    d.hum_status\n];\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 1820,
+        "wires": [
+            [
+                "4d24043fdf548bbc"
+            ]
+        ]
+    },
+    {
+        "id": "0b3358f711e7ed0b",
+        "type": "uibuilder",
+        "z": "c0cdca176eedd227",
+        "name": "",
+        "topic": "",
+        "url": "dashboard",
+        "okToGo": true,
+        "fwdInMessages": false,
+        "allowScripts": true,
+        "allowStyles": true,
+        "templateFolder": "blank",
+        "extTemplate": "",
+        "reload": false,
+        "sourceFolder": "src",
+        "deployedVersion": "7.4.3",
+        "showMsgUib": false,
+        "title": "",
+        "descr": "",
+        "editurl": "vscode://file\\Users\\PCSGH\\.node-red\\uibuilder/dashboard/?windowId=_blank",
+        "x": 670,
+        "y": 1920,
+        "wires": [
+            [
+                "aa62b8b4ab44d73e"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "31155ce3490e3f16",
+        "type": "mysql",
+        "z": "c0cdca176eedd227",
+        "mydb": "5e560f07cfec117a",
+        "name": "Uptime",
+        "x": 800,
+        "y": 2000,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "aa62b8b4ab44d73e",
+        "type": "debug",
+        "z": "c0cdca176eedd227",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 1920,
+        "wires": []
+    },
+    {
+        "id": "8301192ec347dbc9",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.42.9",
+        "port": "18831",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "5e560f07cfec117a",
+        "type": "MySQLdatabase",
+        "name": "",
+        "host": "192.168.42.10",
+        "port": "33061",
+        "db": "Server Monitoring",
+        "tz": "",
+        "charset": "UTF8"
+    }
+]
