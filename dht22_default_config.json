@@ -1,0 +1,26 @@
+{
+  "DHT22_PINS": [25],
+  "SENSOR_LOCATIONS": {
+    "25": "ตำแหน่งที่ 1",
+    "26": "ตำแหน่งที่ 2",
+    "32": "ตำแหน่งที่ 3",
+    "33": "ตำแหน่งที่ 4"
+  },
+  "LED_PIN": 13,
+  "SAMPLE_COUNT": 2,
+  "READ_DELAY": 2,
+  "Calibrate_temp": 0,
+  "Calibrate_hum": 0,
+  "CON_TEMP_MIN": 18,
+  "CON_TEMP_MAX": 27,
+  "CON_HUM_MIN": 40,
+  "CON_HUM_MAX": 65,
+  "PER_TEMP_ALARM": 5,
+  "PER_HUM_ALARM": 5,
+  "TEMP_MIN": -40,
+  "TEMP_MAX": 80,
+  "HUM_MIN": 0,
+  "HUM_MAX": 100,
+  "DHT22_INTERVAL": 2
+
+}

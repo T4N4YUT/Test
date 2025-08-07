@@ -1,0 +1,11 @@
+{
+  "broker": "192.168.41.9",
+  "port": 18831,
+  "user": "",
+  "password": "",
+  "keepalive": 60,  
+  "reconnect_interval": 5,
+  "lwt_topic": "esp32/status",
+  "status_topic": "esp32/status",
+  "subscribe_topics" : ["esp32/commands"]
+}
