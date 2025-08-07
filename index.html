@@ -806,7 +806,10 @@
         if (typeof uibuilder !== 'undefined') {
             uibuilder.send({ 
                 topic: `esp32/control/${currentRoom}/set_config`,
-                payload: allSettings
+                payload: {
+                    command: "set_config",
+                    settings: allSettings
+                }
             });
         }
         
@@ -1052,11 +1055,11 @@
     }
     function requestConfigFromDevice(room) {
         if (typeof uibuilder !== 'undefined' && uibuilder.get) {
-            const requestTopic = `esp32/commands`;
-            console.log(`Sending MQTT request to topic: ${requestTopic}`);
+            const requestPayload = { command: "get_config" };
+            console.log(`Sending MQTT request to topic: esp32/commands`);
             uibuilder.send({
-                topic: requestTopic,
-                payload: '{"command":"get_config"}'
+                topic: `esp32/control/${room}/request_config`,
+                payload: requestPayload
             });
         } else {
             console.warn("uibuilder not found or not connected, cannot request config.");
@@ -1073,7 +1076,7 @@
         document.getElementById('mqtt-broker').value = config.broker || '';
         document.getElementById('mqtt-port').value = config.port || '';
         document.getElementById('mqtt-user').value = config.user || '';
-        document.getElementById('mqtt-pass').value = config.password || ''; // เนื่องจาก password ถูกส่งกลับมาด้วย
+        document.getElementById('mqtt-pass').value = config.password || '';
     }
 
     function fillAlertsForm(settings) {
